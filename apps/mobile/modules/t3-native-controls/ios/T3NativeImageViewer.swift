@@ -312,14 +312,14 @@ private final class T3ImageViewerPage: UIView, UIScrollViewDelegate {
     icon.tintColor = UIColor(white: 1, alpha: 0.8)
     icon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 28, weight: .regular)
     let label = UILabel()
-    label.text = "This image could not be loaded."
+    label.text = "无法加载此图片。"
     label.textColor = UIColor(white: 1, alpha: 0.8)
     label.font = .preferredFont(forTextStyle: .subheadline)
     label.adjustsFontForContentSizeCategory = true
     label.textAlignment = .center
     label.numberOfLines = 0
     var configuration = UIButton.Configuration.gray()
-    configuration.title = "Try Again"
+    configuration.title = "重试"
     configuration.cornerStyle = .capsule
     configuration.baseForegroundColor = .white
     configuration.baseBackgroundColor = UIColor(white: 1, alpha: 0.18)
@@ -497,7 +497,7 @@ final class T3ImageViewerController: UIViewController, UIScrollViewDelegate, UIG
   private var laidOutSize = CGSize.zero
   private var isLayingOut = false
   private lazy var saveItem = UIBarButtonItem(
-    title: "Save to Photos", image: UIImage(systemName: "square.and.arrow.down"),
+    title: "保存到照片", image: UIImage(systemName: "square.and.arrow.down"),
     primaryAction: UIAction { [weak self] _ in self?.save() })
   private lazy var shareItem = UIBarButtonItem(
     systemItem: .action, primaryAction: UIAction { [weak self] _ in self?.share() })
@@ -586,7 +586,7 @@ final class T3ImageViewerController: UIViewController, UIScrollViewDelegate, UIG
   private func updateTitle() {
     updateActions()
     let title = titles[safe: currentIndex]
-    let counter = titles.count > 1 ? "\(currentIndex + 1) of \(titles.count)" : nil
+    let counter = titles.count > 1 ? "\(currentIndex + 1) / \(titles.count)" : nil
     navigationItem.title = title
     if #available(iOS 26.0, *) { navigationItem.subtitle = counter }
     titleLabel.text = title
@@ -885,7 +885,7 @@ final class T3ImageViewerController: UIViewController, UIScrollViewDelegate, UIG
           if saved {
             self?.confirmSaved()
           } else {
-            self?.showSaveError(error?.localizedDescription ?? "Photos could not save this image.")
+            self?.showSaveError(error?.localizedDescription ?? "无法将此图片保存到照片。")
           }
         }
       })
@@ -894,7 +894,7 @@ final class T3ImageViewerController: UIViewController, UIScrollViewDelegate, UIG
 
   private func confirmSaved() {
     UINotificationFeedbackGenerator().notificationOccurred(.success)
-    UIAccessibility.post(notification: .announcement, argument: "Saved to Photos")
+    UIAccessibility.post(notification: .announcement, argument: "已保存到照片")
     saveItem.image = UIImage(systemName: "checkmark")
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
       self?.saveItem.image = UIImage(systemName: "square.and.arrow.down")
@@ -902,8 +902,8 @@ final class T3ImageViewerController: UIViewController, UIScrollViewDelegate, UIG
   }
 
   private func showSaveError(_ message: String) {
-    let alert = UIAlertController(title: "Could not save image", message: message, preferredStyle: .alert)
-    alert.addAction(UIAlertAction(title: "OK", style: .default))
+    let alert = UIAlertController(title: "无法保存图片", message: message, preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: "好", style: .default))
     present(alert, animated: true)
   }
 

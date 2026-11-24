@@ -2130,7 +2130,7 @@ private final class ReviewDiffContentView: UIView, UIGestureRecognizerDelegate {
   }
 
   private func drawEmptyState(_ rect: CGRect) {
-    let message = "No native diff rows"
+    let message = "暂无差异内容"
     let attributes: [NSAttributedString.Key: Any] = [
       .font: emptyStateFont,
       .foregroundColor: theme.mutedText,
@@ -2280,7 +2280,7 @@ private final class ReviewDiffContentView: UIView, UIGestureRecognizerDelegate {
     let chevronRect = CGRect(x: cardRect.minX + 10, y: cardRect.minY + 11, width: 16, height: 16)
     drawDisclosureChevron(rect: chevronRect, color: theme.mutedText, collapsed: isCollapsed)
 
-    let title = "Comment on \(row.commentRangeLabel ?? "line")"
+    let title = "针对 \(row.commentRangeLabel ?? "此行") 的评论"
     drawSingleLineText(
       title,
       rect: CGRect(

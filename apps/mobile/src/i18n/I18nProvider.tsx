@@ -1,4 +1,4 @@
-import { resolveLocaleSelection } from "@t3tools/client-runtime/locales";
+import { resolveLocaleSelection, SYSTEM_LANGUAGE } from "@t3tools/client-runtime/locales";
 import { useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/reactivity";
 import { GTProvider, initializeGT, useLocale } from "gt-react-native";
@@ -57,8 +57,8 @@ function readSystemLocales(): ReadonlyArray<string> {
 export function useLanguagePreference(): string {
   const preferences = useAtomValue(mobilePreferencesAtom);
   return AsyncResult.isSuccess(preferences)
-    ? (preferences.value.language ?? DEFAULT_LOCALE)
-    : DEFAULT_LOCALE;
+    ? (preferences.value.language ?? SYSTEM_LANGUAGE)
+    : SYSTEM_LANGUAGE;
 }
 
 /** Translates the app into the saved language; "system" follows the device. Mounted once in App. */

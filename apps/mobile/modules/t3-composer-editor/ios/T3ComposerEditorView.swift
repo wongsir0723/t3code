@@ -128,7 +128,7 @@ private final class ComposerTextView: UITextView {
         modifierFlags: .shift,
         action: #selector(insertNewline(_:))
       )
-      newline.discoverabilityTitle = "New Line"
+      newline.discoverabilityTitle = "换行"
       newline.wantsPriorityOverSystemBehavior = true
       commands.append(newline)
     } else {

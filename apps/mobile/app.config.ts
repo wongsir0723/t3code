@@ -142,32 +142,32 @@ const widgetsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
     widgets: [
       {
         name: "SubscriptionUsage",
-        displayName: "Subscription usage",
-        description: "Subscription quotas from your connected T3 Code environments.",
+        displayName: "订阅额度",
+        description: "来自已连接 T3 Code 环境的订阅使用额度。",
         ios: {
           configuration: {
-            title: "Subscription usage",
+            title: "订阅额度",
             description:
-              "Both shows Session and Weekly when available. The Lock Screen shows the tightest selected limit.",
+              "“全部”将在可用时同时显示会话与每周额度；锁屏小组件将优先展示最紧张的所选额度。",
             parameters: {
               codexPeriod: {
-                title: "Codex limits",
+                title: "Codex 额度",
                 type: "enum",
                 default: "auto",
                 values: [
-                  { name: "Both", value: "auto" },
-                  { name: "Session", value: "session" },
-                  { name: "Weekly", value: "weekly" },
+                  { name: "全部", value: "auto" },
+                  { name: "会话", value: "session" },
+                  { name: "每周", value: "weekly" },
                 ],
               },
               claudePeriod: {
-                title: "Claude limits",
+                title: "Claude 额度",
                 type: "enum",
                 default: "auto",
                 values: [
-                  { name: "Both", value: "auto" },
-                  { name: "Session", value: "session" },
-                  { name: "Weekly", value: "weekly" },
+                  { name: "全部", value: "auto" },
+                  { name: "会话", value: "session" },
+                  { name: "每周", value: "weekly" },
                 ],
               },
             },
@@ -192,8 +192,8 @@ const widgetsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
       },
       {
         name: "AgentActivity",
-        displayName: "Agent Activity",
-        description: "Shows the current state of active T3 Code agents.",
+        displayName: "智能体动态",
+        description: "显示当前活跃 T3 Code 智能体的运行状态。",
         android: null,
         ios: {
           supportedFamilies: ["systemSmall", "systemMedium", "accessoryRectangular"],
@@ -267,6 +267,8 @@ const config: ExpoConfig = {
       "keychain-access-groups": [`$(AppIdentifierPrefix)${variant.iosBundleIdentifier}`],
     },
     infoPlist: {
+      CFBundleDevelopmentRegion: "zh-Hans",
+      CFBundleLocalizations: ["zh-Hans", "en"],
       UISupportedInterfaceOrientations: [
         "UIInterfaceOrientationPortrait",
         "UIInterfaceOrientationLandscapeLeft",
@@ -276,10 +278,10 @@ const config: ExpoConfig = {
         NSAllowsArbitraryLoads: true,
       },
       NSLocalNetworkUsageDescription:
-        "Allow T3 Code to connect to T3 Code servers on your local network or tailnet.",
+        "允许 T3 Code 连接到局域网或 Tailnet 中的 T3 Code 服务器。",
       // Built with the iOS 27 SDK, only view controllers can hide or style the status bar.
       UIViewControllerBasedStatusBarAppearance: true,
-      NSPhotoLibraryAddUsageDescription: "Allow T3 Code to save images to your photo library.",
+      NSPhotoLibraryAddUsageDescription: "允许 T3 Code 将图片保存到你的照片图库。",
       // System picture in picture needs background audio to start and survive outside the app.
       UIBackgroundModes: ["audio"],
       ITSAppUsesNonExemptEncryption: false,
@@ -390,7 +392,7 @@ const config: ExpoConfig = {
     [
       "expo-audio",
       {
-        microphonePermission: "Allow T3 Code to use your microphone for voice input.",
+        microphonePermission: "允许 T3 Code 使用你的麦克风进行语音输入。",
         recordAudioAndroid: true,
         enableBackgroundPlayback: false,
         enableBackgroundRecording: false,
@@ -399,7 +401,7 @@ const config: ExpoConfig = {
     [
       "expo-camera",
       {
-        cameraPermission: "Allow T3 Code to access your camera so you can scan pairing QR codes.",
+        cameraPermission: "允许 T3 Code 访问你的相机以扫描配对二维码。",
         microphonePermission: false,
         barcodeScannerEnabled: true,
         recordAudioAndroid: false,
@@ -410,7 +412,7 @@ const config: ExpoConfig = {
       {
         photosPermission: false,
         // `false` makes this plugin add RECORD_AUDIO to blockedPermissions, breaking Android dictation.
-        microphonePermission: "Allow T3 Code to use your microphone for voice input.",
+        microphonePermission: "允许 T3 Code 使用你的麦克风进行语音输入。",
       },
     ],
     [

@@ -1,0 +1,199 @@
+name: Build iOS T3 Code (ZH-CN Unsigned IPA)
+
+on:
+  push:
+    branches:
+      - ios-zh
+  workflow_dispatch:
+    inputs:
+      personal_team:
+        description: "侧载兼容模式（剔除个人免费 Apple ID 不支持的 App Groups / 小组件 / 推送权限；巨魔或付费证书请取消勾选）"
+        type: boolean
+        default: true
+      bundle_id:
+        description: "个人侧载模式的 Bundle ID（仅 personal_team=true 时生效）"
+        type: string
+        default: "com.t3tools.t3code.zh"
+      enable_t3_connect:
+        description: "启用官方 T3 Account 登录与 T3 Connect 云端连接"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-ipa:
+    name: Build Unsigned iOS IPA (ZH-CN)
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      NODE_OPTIONS: "--max-old-space-size=8192"
+      APP_VARIANT: "production"
+      T3CODE_MOBILE_UPDATES_ENABLED: "0"
+      EXPO_NO_GIT_STATUS: "1"
+      EXPO_NO_TELEMETRY: "1"
+      CI: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select latest available Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -d /Applications/Xcode*.app || true
+          selected="$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -n 1 || true)"
+          if [ -z "$selected" ]; then
+            selected="$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n 1 || true)"
+          fi
+          if [ -n "$selected" ]; then
+            echo "Selecting Xcode: $selected"
+            sudo xcode-select -s "$selected/Contents/Developer"
+          fi
+          xcodebuild -version
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+
+      - name: Enable Corepack & check pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global corepack@latest
+          corepack enable
+          pnpm --version
+
+      - name: Check CocoaPods
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v pod || sudo gem install cocoapods --no-document
+          pod --version
+
+      - name: Install mobile dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --prefer-offline --filter=@t3tools/mobile...
+
+      - name: Prepare .env & build environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          PERSONAL_TEAM="${{ inputs.personal_team != '' && inputs.personal_team || 'true' }}"
+          BUNDLE_ID="${{ inputs.bundle_id != '' && inputs.bundle_id || 'com.t3tools.t3code.zh' }}"
+          ENABLE_T3_CONNECT="${{ inputs.enable_t3_connect != '' && inputs.enable_t3_connect || 'true' }}"
+
+          if [ "$ENABLE_T3_CONNECT" = "true" ] && [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            : > .env
+          fi
+
+          {
+            echo ""
+            echo "APP_VARIANT=production"
+            echo "T3CODE_MOBILE_UPDATES_ENABLED=0"
+            if [ "$PERSONAL_TEAM" = "true" ]; then
+              echo "T3CODE_IOS_PERSONAL_TEAM=1"
+              echo "T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID=$BUNDLE_ID"
+            fi
+          } >> .env
+
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from "node:fs";
+          import { loadRepoEnv } from "./scripts/lib/public-config.ts";
+          const env = loadRepoEnv({ repoRoot: process.cwd(), baseEnv: process.env });
+          const keys = [
+            "APP_VARIANT",
+            "T3CODE_MOBILE_UPDATES_ENABLED",
+            "T3CODE_IOS_PERSONAL_TEAM",
+            "T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID",
+            "T3CODE_CLERK_PUBLISHABLE_KEY",
+            "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
+            "T3CODE_CLERK_JWT_TEMPLATE",
+            "EXPO_PUBLIC_CLERK_JWT_TEMPLATE",
+            "T3CODE_CLERK_CLI_OAUTH_CLIENT_ID",
+            "T3CODE_RELAY_URL",
+          ];
+          for (const key of keys) {
+            if (env[key] !== undefined && env[key] !== "") {
+              appendFileSync(process.env.GITHUB_ENV, `${key}=${env[key]}\n`);
+            }
+          }
+          NODE
+
+          echo "PERSONAL_TEAM=$PERSONAL_TEAM" >> "$GITHUB_ENV"
+
+      - name: Expo prebuild (iOS)
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec expo prebuild --clean --platform ios
+
+      - name: Build unsigned Release .app and package .ipa
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKSPACE="$(find ios -maxdepth 1 -name '*.xcworkspace' -print -quit)"
+          if [ -z "$WORKSPACE" ]; then
+            echo "ERROR: No .xcworkspace found in apps/mobile/ios"
+            exit 1
+          fi
+          SCHEME="$(basename "$WORKSPACE" .xcworkspace)"
+          echo "Detected workspace: $WORKSPACE | scheme: $SCHEME"
+
+          DERIVED_DATA="$RUNNER_TEMP/t3code-ios-derived"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            build
+
+          APP_PATH="$(find "$DERIVED_DATA/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)"
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: Built .app bundle not found"
+            exit 1
+          fi
+          echo "Built app: $APP_PATH"
+
+          if [ ! -f "$APP_PATH/main.jsbundle" ]; then
+            echo "ERROR: main.jsbundle not found in $APP_PATH!"
+            ls -la "$APP_PATH"
+            exit 1
+          fi
+
+          OUT_DIR="$RUNNER_TEMP/ipa-out"
+          mkdir -p "$OUT_DIR/Payload"
+          cp -R "$APP_PATH" "$OUT_DIR/Payload/"
+
+          MODE_TAG="full"
+          if [ "$PERSONAL_TEAM" = "true" ]; then
+            MODE_TAG="sideload"
+          fi
+          IPA_NAME="T3Code-iOS-zh-CN-${MODE_TAG}-${GITHUB_SHA::7}.ipa"
+
+          (cd "$OUT_DIR" && zip -qry "$IPA_NAME" Payload)
+          mkdir -p "$GITHUB_WORKSPACE/dist-ios"
+          mv "$OUT_DIR/$IPA_NAME" "$GITHUB_WORKSPACE/dist-ios/$IPA_NAME"
+          ls -lh "$GITHUB_WORKSPACE/dist-ios/$IPA_NAME"
+
+      - name: Upload unsigned IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: T3Code-iOS-zh-CN-IPA
+          path: dist-ios/*.ipa
+          retention-days: 14
