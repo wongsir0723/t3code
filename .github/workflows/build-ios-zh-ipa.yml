@@ -25,7 +25,7 @@ permissions:
 jobs:
   build-ios-ipa:
     name: Build Unsigned iOS IPA (ZH-CN)
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     env:
       NODE_OPTIONS: "--max-old-space-size=8192"
@@ -38,20 +38,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select latest available Xcode
+      - name: Select Xcode 27.1 (required for iPhone Duo / iOS 27.1 SDK)
         shell: bash
         run: |
           set -euo pipefail
           ls -d /Applications/Xcode*.app || true
-          selected="$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -n 1 || true)"
-          if [ -z "$selected" ]; then
-            selected="$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n 1 || true)"
+          selected="/Applications/Xcode_27.1.app"
+          if [ ! -d "$selected" ]; then
+            echo "::error::Xcode 27.1 is not installed on this runner (required for iPhone Duo support)."
+            exit 1
           fi
-          if [ -n "$selected" ]; then
-            echo "Selecting Xcode: $selected"
-            sudo xcode-select -s "$selected/Contents/Developer"
-          fi
+          sudo xcode-select -s "$selected/Contents/Developer"
           xcodebuild -version
+          sdk_ver="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "iOS SDK version: $sdk_ver"
+          if [[ "$sdk_ver" != 27.1* ]]; then
+            echo "::error::Expected iOS 27.1 SDK, got $sdk_ver"
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -184,7 +188,7 @@ jobs:
           if [ "$PERSONAL_TEAM" = "true" ]; then
             MODE_TAG="sideload"
           fi
-          IPA_NAME="T3Code-iOS-zh-CN-${MODE_TAG}-${GITHUB_SHA::7}.ipa"
+          IPA_NAME="T3Code-iOS27.1-Duo-zh-CN-${MODE_TAG}-${GITHUB_SHA::7}.ipa"
 
           (cd "$OUT_DIR" && zip -qry "$IPA_NAME" Payload)
           mkdir -p "$GITHUB_WORKSPACE/dist-ios"
@@ -194,6 +198,6 @@ jobs:
       - name: Upload unsigned IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: T3Code-iOS-zh-CN-IPA
+          name: T3Code-iOS27.1-Duo-zh-CN-IPA
           path: dist-ios/*.ipa
           retention-days: 14
